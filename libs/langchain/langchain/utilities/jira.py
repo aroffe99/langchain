@@ -12,6 +12,7 @@ class JiraAPIWrapper(BaseModel):
     jira: Any  #: :meta private:
     confluence: Any
     jira_username: Optional[str] = None
+    jira_password: Optional[str] = None
     jira_api_token: Optional[str] = None
     jira_instance_url: Optional[str] = None
 
@@ -26,10 +27,16 @@ class JiraAPIWrapper(BaseModel):
         jira_username = get_from_dict_or_env(values, "jira_username", "JIRA_USERNAME")
         values["jira_username"] = jira_username
 
-        jira_api_token = get_from_dict_or_env(
-            values, "jira_api_token", "JIRA_API_TOKEN"
-        )
-        values["jira_api_token"] = jira_api_token
+        try:
+            jira_password = get_from_dict_or_env(
+                values, "jira_password", "JIRA_PASSWORD"
+            )
+            values["jira_password"] = jira_password
+        except ValueError:
+            jira_api_token = get_from_dict_or_env(
+                values, "jira_api_token", "JIRA_API_TOKEN"
+            )
+            values["jira_api_token"] = jira_api_token
 
         jira_instance_url = get_from_dict_or_env(
             values, "jira_instance_url", "JIRA_INSTANCE_URL"
@@ -44,12 +51,20 @@ class JiraAPIWrapper(BaseModel):
                 "Please install it with `pip install atlassian-python-api`"
             )
 
-        jira = Jira(
-            url=jira_instance_url,
-            username=jira_username,
-            password=jira_api_token,
-            cloud=True,
-        )
+        if values["jira_password"]:
+            jira = Jira(
+                url=jira_instance_url,
+                username=jira_username,
+                password=jira_password,
+                cloud=True,
+            )
+            values["jira"] = jira
+        else:  
+            jira = Jira(
+                url=jira_instance_url,
+                token=jira_api_token
+            )
+            values["jira"] = jira
 
         confluence = Confluence(
             url=jira_instance_url,
@@ -58,7 +73,6 @@ class JiraAPIWrapper(BaseModel):
             cloud=True,
         )
 
-        values["jira"] = jira
         values["confluence"] = confluence
 
         return values
